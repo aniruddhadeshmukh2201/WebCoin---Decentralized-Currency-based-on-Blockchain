@@ -1,0 +1,33 @@
+{
+  "name": "sutali",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon ./app",
+    "dev2": "HTTP_PORT=3002 P2P_PORT=5002 PEERS=ws://localhost:5001 node ./app",
+    "dev3": "HTTP_PORT=3003 P2P_PORT=5003 PEERS=ws://localhost:5001,ws://localhost:5002 node ./app",
+    "start": "node ./app",
+    "test": "jest --watchAll",
+    "dev-test": "nodemon dev-test"
+  },
+  "jest" : {
+    "testEnvironment": "node"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "jest": "^27.0.6",
+    "nodemon": "^2.0.12"
+  },
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "cross-env": "^7.0.3",
+    "crypto-js": "^4.1.1",
+    "elliptic": "^6.5.4",
+    "express": "^4.17.1",
+    "uuid": "^8.3.2",
+    "ws": "^8.0.0"
+  }
+}
