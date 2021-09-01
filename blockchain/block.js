@@ -1,5 +1,6 @@
-const ChainUtil = require('../chain-util');
+const ChainUtil = require('../util/chain-util');
 const {DIFFICULTY, MINE_RATE} = require('../config');
+const hexToBinary = require('hex-to-binary'); 
 
 class Block {
     constructor(timestamp, lasthash, hash, data, nonce, difficulty) {
@@ -36,7 +37,7 @@ class Block {
             timestamp = Date.now();
             difficulty = Block.adjustDifficulty(lastBlock, timestamp);
             hash = Block.hash(timestamp, lastHash, data, nonce, difficulty);
-       } while(hash.substring(0, difficulty) !== '0'.repeat(difficulty));
+       } while(hexToBinary(hash).substring(0, difficulty) !== '0'.repeat(difficulty));
         return new this(timestamp, lastHash, hash, data, nonce, difficulty);
     }
     static blockHash(block) {
@@ -45,6 +46,10 @@ class Block {
     }
     static adjustDifficulty(lastBlock, timestamp) {
         let { difficulty } = lastBlock;
+        if(difficulty < 1) {
+            console.log("difficulty should be atleast 1");
+            return 1;
+        }
         difficulty = lastBlock.timestamp + MINE_RATE > timestamp  ? difficulty + 1 : difficulty - 1;
         return difficulty;
     }

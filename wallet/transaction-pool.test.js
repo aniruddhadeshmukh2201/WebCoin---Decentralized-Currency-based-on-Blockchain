@@ -1,50 +1,83 @@
 const TransactionPool = require('./transaction-pool');
 const Transaction = require('./transaction');
 const Wallet = require('./index');
-const Blockchain = require('../blockchain');  
+const Blockchain = require('../blockchain'); 
 
 describe('TransactionPool', () => {
-    let tp, wallet, transaction, bc;
+    let tp, transaction, senderWallet;
     beforeEach(() => {
         tp = new TransactionPool();
-        wallet = new Wallet();
-        bc = new Blockchain();
-        transaction = wallet.createTransaction('rand-address', 30, bc, tp);
+        senderWallet = new Wallet();
+        transaction = new Transaction({senderWallet, recipient: 'fake-recipient', amount: 50});
     });
-    it('Adds a transaction to the pool', ()=>{
-        expect(tp.transactions.find(t=>t.id === transaction.id)).toEqual(transaction);
+    describe('setTransaction()', () => {
+        it('adds a tansaction', ()=>{
+            tp.setTransaction(transaction);
+            expect(tp.transactionMap[transaction.id])
+            .toEqual(transaction);
+        });
     });
-    it('updates a transaction in the pool', ()=>{
-        const oldTransaction = JSON.stringify(transaction);
-        const newTransaction = transaction.update(wallet, 'foo-address', 40);
-        tp.updateorAddTransaction(newTransaction);
-        expect(JSON.stringify(tp.transactions.find(t=> t.id === newTransaction.id)))
-        .not.toEqual(oldTransaction);
+    describe('existingTransaction()()', () => {
+        it('returns an exixting transaction given an input address', ()=>{
+            tp.setTransaction(transaction);
+            expect(tp.existingTransaction(senderWallet.publicKey))
+            .toBe(transaction);
+        });
     });
-
-    it('clears transactions', () => {
-        tp.clear();
-        expect(tp.transactions).toEqual([]);
-    });
-    describe('mixing valid and corrupt transactins', () => {
-        let validTransactions;
+    describe('validTransactions()', () => {
+        let validTs;
         beforeEach(() => {
-            validTransactions = [...tp.transactions];
-            for(let i = 0; i< 6; i++) {
-                wallet = new Wallet();
-                transaction = wallet.createTransaction('rand-address', 30,bc, tp);
-                if(i%2 == 0) {
-                    transaction.input.amount = 9999;
-                } else{
-                    validTransactions.push(transaction);
+            validTs = [];
+            errorMock = jest.fn();
+            global.console.error = errorMock;
+
+            for(let i = 0; i< 10; i++) {
+                transaction = new Transaction({senderWallet,recipient: 'any-recipient', amount: 30});
+                if(i%3 === 0) {
+                    transaction.input.amount = 9999999;
+                } else if(i%3 === 1){
+                    transaction.input.signature = new Wallet().sign('foo');
+                } else {
+                    validTs.push(transaction);
+                }
+                tp.setTransaction(transaction);
+                
+            }
+            console.log(validTs.length);
+        });
+
+        it('returns valid transaction', () => {
+            expect(tp.validTransactions())
+            .toEqual(validTs);
+        });
+        it('logs errors for the invalid transactions', () => {
+            tp.validTransactions();
+            expect(errorMock).toHaveBeenCalled();
+        });
+    });
+    describe('clear()', () => {
+        it('clears the transactions', () => {
+            tp.clear();
+            expect(tp.transactionMap).toEqual({});
+        });
+    });
+    describe('clearBlockchainTransactions()', () => {
+        it('clears the pool of any existing blockchain transactions', () => {
+            let blockchain = new Blockchain();
+            const expectedTransactionMap = {};
+            for(let i =0 ; i< 6; i++) {
+                const transaction = new Wallet().createTransaction({
+                    recipient: 'foo', amount: 20
+                });
+                tp.setTransaction(transaction);
+                if (i%2===0) {
+                    blockchain.addBlock({data: [transaction]})
+                } else {
+                    expectedTransactionMap[transaction.id] = transaction;
                 }
             }
-        });
-        it('shows adifference between vlaid and corrupt transactions', () => {
-            expect(JSON.stringify(tp.transactions)).not.toEqual(JSON.stringify(validTransactions));
-        });
-        it('grabs valid transactions', () => {
-            expect(tp.validTransactions()).toEqual(validTransactions);
+            tp.clearBlockChainTransactions({chain: blockchain.chain});
+            expect(tp.transactionMap).toEqual(expectedTransactionMap);
         });
     });
 });

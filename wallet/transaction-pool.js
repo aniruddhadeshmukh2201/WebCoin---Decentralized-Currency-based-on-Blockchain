@@ -1,39 +1,36 @@
 const Transaction = require('./transaction');
 
-
 class TransactionPool{
     constructor() {
-        this.transactions = [];
+        this.transactionMap = {};
     }
-    updateorAddTransaction(transaction) {
-        let transactionWithId = this.transactions.find(t => t.id === transaction.id);
-        if(transactionWithId) {
-            this.transactions[this.transactions.indexOf(transactionWithId)] = transaction;
-        } else {
-            this.transactions.push(transaction);
-        }
+    setTransaction(transaction) {
+        this.transactionMap[transaction.id] = transaction;
     }
-    existingTransaction(address) {
-        return this.transactions.find(t => t.input.address === address);
+    existingTransaction(inputAddress) {
+        const transactions = Object.values(this.transactionMap);
+        return transactions.find(transaction => transaction.input.address === inputAddress);
+    }
+    setMap(transactionMap) {
+        this.transactionMap = transactionMap;
     }
     validTransactions() {
-        return this.transactions.filter(transaction => {
-            const outputTotal = transaction.outputs.reduce((total, output) => {
-                return total + output.amount;
-            }, 0);
-            if(transaction.input.amount !== outputTotal) {
-                console.log(`Invalid transaction from ${transaction.input.address}.`);
-                return;
-            }
-            if(!Transaction.verifyTransaction(transaction)){
-                console.log(`Invalid signature from ${transaction.input.address}.`);
-                return;
-            }
-            return transaction;
-        });
+        return Object.values(this.transactionMap).filter(
+            transaction => Transaction.validTransaction(transaction)
+        );
     }
     clear() {
-        this.transactions = [];
+        this.transactionMap = {};
+    }
+    clearBlockChainTransactions({chain}) {
+        for (let i=1; i<chain.length; i++) {
+            const block = chain[i];
+            for (let transaction of block.data) {
+              if (this.transactionMap[transaction.id]) {
+                delete this.transactionMap[transaction.id];
+              }
+            }
+        }
     }
 }
 
